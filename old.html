@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon Tall Grass Encounters</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8C8 100%);
+            font-family: 'Arial', sans-serif;
+            color: #333;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            color: #FF6B6B;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-size: 2.5em;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(5, 110px);
+            grid-template-rows: repeat(5, 110px);
+            gap: 8px;
+            padding: 20px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .grid-cell {
+            background: linear-gradient(45deg, #228B22 0%, #32CD32 50%, #228B22 100%);
+            background-image: 
+                linear-gradient(45deg, rgba(0,100,0,0.3) 25%, transparent 25%),
+                linear-gradient(-45deg, rgba(0,100,0,0.3) 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, rgba(0,100,0,0.3) 75%),
+                linear-gradient(-45deg, transparent 75%, rgba(0,100,0,0.3) 75%);
+            background-size: 25px 25px;
+            border: 3px solid #006400;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .grid-cell::before {
+            content: url('tallgrass.png');
+            transform:scale(.25);
+            position: absolute;
+            font-size: 2em;
+            opacity: 0.7;
+            z-index: 1;
+        }
+        
+        .grid-cell:hover {
+            transform: scale(1.08) rotate(2deg);
+            border-color: #FFD700;
+            box-shadow: 0 8px 25px rgba(255,215,0,0.4);
+            background: linear-gradient(45deg, #32CD32 0%, #90EE90 50%, #32CD32 100%);
+        }
+        
+        .encounter-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 25px;
+            display: none;
+            z-index: 100;
+            text-align: center;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            transition: all 0.4s ease;
+            max-width: 350px;
+            border: 4px solid #FFD700;
+        }
+        
+        .encounter-modal.show {
+            display: flex;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .encounter-modal img {
+            width: 180px;
+            height: 180px;
+            image-rendering: pixelated;
+            margin-bottom: 20px;
+            border: 5px solid #FFD700;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+        
+        .encounter-modal img.shiny {
+            filter: drop-shadow(0 0 20px #FFD700) brightness(1.2);
+            animation: sparkle 1s infinite alternate;
+        }
+        
+        @keyframes sparkle {
+            0% { filter: drop-shadow(0 0 20px #FFD700) brightness(1.2); }
+            100% { filter: drop-shadow(0 0 30px #FFFF00) brightness(1.4); }
+        }
+        
+        .encounter-modal h2 {
+            margin: 0 0 15px 0;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .encounter-modal p {
+            margin: 0 0 25px 0;
+            font-size: 1.3em;
+            opacity: 0.9;
+        }
+        
+        .close-btn {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E8E);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(255,107,107,0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255,107,107,0.6);
+        }
+        
+        .rarity-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #FFD700;
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .rarity-common { background: #C0C0C0; }
+        .rarity-rare { background: #4169E1; color: white; }
+        .rarity-shiny { background: linear-gradient(45deg, #FFD700, #FFFF00); animation: sparkle 1s infinite alternate; }
+        /* No-encounter toast */
+        .no-encounter {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 0.95em;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 220ms ease, transform 220ms ease;
+            z-index: 200;
+        }
+        .no-encounter.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <h1>🌿 Tall Grass Encounters 🌿</h1>
+    <div class="grid-container" id="grid">
+        <!-- Grid cells generated by JS -->
+    </div>
+    
+    <div id="encounterModal" class="encounter-modal">
+        <div class="rarity-badge" id="rarityBadge"></div>
+        <img id="pokemonSprite" src="" alt="Wild Pokémon">
+        <h2 id="pokemonName"></h2>
+        <p>A wild <span id="pokemonText"></span> appeared!</p>
+        <!-- Run Away button removed per request; modal still closes when clicking outside -->
+    </div>
+
+    <!-- Visible toast for when there is no encounter -->
+    <div id="noEncounterToast" class="no-encounter" aria-live="polite">Nothing here...</div>
+    
+    <script>
+        const gridContainer = document.getElementById('grid');
+        const modal = document.getElementById('encounterModal');
+        const spriteImg = document.getElementById('pokemonSprite');
+        const pokemonName = document.getElementById('pokemonName');
+        const pokemonText = document.getElementById('pokemonText');
+        const rarityBadge = document.getElementById('rarityBadge');
+        
+        const SPRITE_BASE_URL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
+        const SHINY_BASE_URL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/';
+        
+        // Pokémon data with IDs and rarity
+        const pokemonData = [
+            { name: 'Rattata', id: 19, common: true },
+            { name: 'Weedle', id: 13, common: true },
+            { name: 'Pidgey', id: 16, common: true },
+            { name: 'Nidoran♀', id: 29, common: true },
+            { name: 'Nidoran♂', id: 32, common: true },
+            { name: 'Pikachu', id: 25, rare: true },
+            { name: 'Pidgeotto', id: 17, rare: true }
+        ];
+        
+        // Encounter probabilities
+        // Added a 25% chance of no encounter ('none'). Totals sum to 100.
+        const encounterWeights = {
+            none: 25,    // 25% chance that nothing happens
+            common: 57,  // adjusted so totals are 100
+            rare: 15,    // 15% chance
+            shiny: 3     // 3% chance
+        };
+        
+        // Create 5x5 grid
+        for (let i = 0; i < 25; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('grid-cell');
+            cell.addEventListener('click', handleEncounter);
+            gridContainer.appendChild(cell);
+        }
+        
+        function getRandomEncounter() {
+            const rand = Math.random() * 100;
+            if (rand < encounterWeights.none) {
+                return { type: 'none', weight: 'none' };
+            } else if (rand < encounterWeights.none + encounterWeights.shiny) {
+                return { type: 'shiny', weight: 'shiny' };
+            } else if (rand < encounterWeights.none + encounterWeights.shiny + encounterWeights.rare) {
+                return { type: 'rare', weight: 'rare' };
+            } else {
+                return { type: 'common', weight: 'common' };
+            }
+        }
+        
+        function getRandomPokemonByRarity(rarity) {
+            const candidates = pokemonData.filter(p => 
+                (rarity === 'common' && p.common) ||
+                (rarity === 'rare' && p.rare) ||
+                (rarity === 'shiny') // Shiny can be any Pokémon
+            );
+            return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+        // Show a brief toast when there's no encounter
+        function showNoEncounter() {
+            const toast = document.getElementById('noEncounterToast');
+            if (!toast) return;
+            toast.classList.add('show');
+            // hide after 1.2s
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 1200);
+        }
+        
+        async function handleEncounter() {
+            const encounter = getRandomEncounter();
+            // If there's no encounter, show a visible toast and return (25% chance)
+            if (encounter.type === 'none') {
+                showNoEncounter();
+                return;
+            }
+            const pokemon = getRandomPokemonByRarity(encounter.type);
+            
+            // Load sprite (shiny or normal)
+            const spriteUrl = encounter.type === 'shiny' ? 
+                `${SHINY_BASE_URL}${pokemon.id}.png` : 
+                `${SPRITE_BASE_URL}${pokemon.id}.png`;
+            
+            spriteImg.src = spriteUrl;
+            spriteImg.classList.toggle('shiny', encounter.type === 'shiny');
+            
+            pokemonName.textContent = `${pokemon.name}${encounter.type === 'shiny' ? ' ✨' : ''}`;
+            pokemonText.textContent = pokemon.name.toLowerCase();
+            
+            // Show rarity badge
+            rarityBadge.textContent = encounter.type.toUpperCase();
+            rarityBadge.className = `rarity-badge rarity-${encounter.type}`;
+            rarityBadge.style.display = 'block';
+            
+            modal.classList.add('show');
+            
+            // Shake animation for rare/shiny
+            if (encounter.type !== 'common') {
+                spriteImg.style.animation = 'shake 0.5s ease-in-out';
+                setTimeout(() => {
+                    spriteImg.style.animation = '';
+                }, 500);
+            }
+        }
+        
+        function closeEncounter() {
+            modal.classList.remove('show');
+            spriteImg.classList.remove('shiny');
+            rarityBadge.style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                closeEncounter();
+            }
+        }
+        
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
